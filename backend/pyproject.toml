@@ -9,6 +9,14 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "django-environ>=0.13.0",
     "gunicorn>=25.1.0",
-    "ruff>=0.15.2",
+    "psycopg[binary]>=3.3.3",
+    "scrapy>=2.14.1",
     "whitenoise>=6.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pyright>=1.1.408",
+    "ruff>=0.15.4",
 ]

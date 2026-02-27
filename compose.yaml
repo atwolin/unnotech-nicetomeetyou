@@ -1,4 +1,17 @@
 services:
+  db:
+    image: postgres:16.13-alpine
+    container_name: udnnews_db
+    shm_size: 128mb
+    env_file:
+      - .env
+    ports:
+      - "5436:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - udnnews
+
   backend:
     build:
       context: ./backend
@@ -6,6 +19,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app
+      - /app/.venv
       - backend_static:/app/staticfiles
     env_file:
       - .env
@@ -17,6 +32,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -41,4 +58,5 @@ networks:
     driver: bridge
 
 volumes:
+  db_data:
   backend_static:
