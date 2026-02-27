@@ -1,0 +1,14 @@
+[project]
+name = "udnnews"
+version = "0.1.0"
+description = "Unnotech Backend Engineer Coding Test"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django==5.2",
+    "django-cors-headers>=4.9.0",
+    "django-environ>=0.13.0",
+    "gunicorn>=25.1.0",
+    "ruff>=0.15.2",
+    "whitenoise>=6.11.0",
+]

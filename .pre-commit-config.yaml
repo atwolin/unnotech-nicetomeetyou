@@ -1,0 +1,47 @@
+repos:
+  # Pre-commit
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: debug-statements
+
+  # Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.13
+    hooks:
+      # Run the formatter
+      - id: ruff-format
+        exclude: '.*/migrations/.*'
+      # Run the linter
+      - id: ruff-check
+        args: [--fix]
+        exclude: '.*/migrations/.*'
+
+  # Pyright
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: bash -c 'cd backend && uv run pyright'
+        language: system
+        types: [python]
+        files: ^backend/
+        pass_filenames: false
+
+  # Frontend - Prettier
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd frontend && npm run format && npm run format:check'
+        language: system
+        types_or: [html, css, javascript]
+        files: ^frontend/
+        pass_filenames: false
