@@ -1,0 +1,48 @@
+[x-cloak] {
+    display: none !important;
+}
+
+/* Custom scrollbar for modal content */
+.custom-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-content::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prose customizations */
+.custom-content p {
+    margin-bottom: 1.5em;
+    color: #4b5563;
+    /* text-gray-600 */
+}
+
+.custom-content img {
+    border-radius: 0.75rem;
+    /* rounded-xl */
+    margin: 2rem auto;
+    max-width: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.custom-content a {
+    color: #004de6;
+    /* udn-blue */
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.custom-content a:hover {
+    color: #0036a3;
+}
