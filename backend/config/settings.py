@@ -44,8 +44,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
+    "django_celery_results",
     "accounts",
     "news",
+    "news_scrapers",
 ]
 
 MIDDLEWARE = [
@@ -134,6 +137,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # User model
 AUTH_USER_MODEL = "accounts.User"
 
+# ============================================================
+# Security configuration
+# ============================================================
 # CORS configuration
 CORS_ALLOWED_ORIGINS = env.list("DJANGO_CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_ALL_ORIGINS = env.bool("DJANGO_CORS_ALLOW_ALL_ORIGINS", default=False)
@@ -141,7 +147,6 @@ CORS_ALLOW_ALL_ORIGINS = env.bool("DJANGO_CORS_ALLOW_ALL_ORIGINS", default=False
 # CSRF configuration
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
-# Security configuration
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=2592000)  # 30 days
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(
@@ -152,11 +157,42 @@ SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=True)
 CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# ============================================================
+# Celery configuration
+# ============================================================
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRATION = 60 * 60 * 24 * 7  # 1 week
+
+# Worker
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# Serializer
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# ============================================================
 # Django REST Framework
+# ============================================================
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+}
+
+# ============================================================
+# drf-spectacular config
+# ============================================================
+SPECTACULAR_SETTINGS = {
+    "TITLE": "UdnNews API",
+    "DESCRIPTION": "API for UdnNews articles and categories.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }

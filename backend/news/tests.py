@@ -14,12 +14,14 @@ from .serializers import ArticleDetailSerializer, ArticleListSerializer
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_category(category_id="12345", name="NBA"):
     return Category.objects.create(category_id=category_id, name=name)
 
 
-def make_article(story_id="1000001", title="Test Article", category=None,
-                 published_at=None, **kwargs):
+def make_article(
+    story_id="1000001", title="Test Article", category=None, published_at=None, **kwargs
+):
     return Article.objects.create(
         story_id=story_id,
         url=f"https://tw-nba.udn.com/nba/story/12345/{story_id}",
@@ -33,6 +35,7 @@ def make_article(story_id="1000001", title="Test Article", category=None,
 # ---------------------------------------------------------------------------
 # Model tests
 # ---------------------------------------------------------------------------
+
 
 class CategoryModelTest(TestCase):
     def test_str_format(self):
@@ -68,6 +71,7 @@ class ArticleModelTest(TestCase):
 # Serializer tests
 # ---------------------------------------------------------------------------
 
+
 class ArticleSerializerTest(TestCase):
     def setUp(self):
         self.category = make_category()
@@ -98,6 +102,7 @@ class ArticleSerializerTest(TestCase):
 # ---------------------------------------------------------------------------
 # API view tests
 # ---------------------------------------------------------------------------
+
 
 class ArticleAPITest(APITestCase):
     def setUp(self):

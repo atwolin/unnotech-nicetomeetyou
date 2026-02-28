@@ -3,14 +3,30 @@ services:
     image: postgres:16.13-alpine
     container_name: udnnews_db
     shm_size: 128mb
-    env_file:
-      - .env
     ports:
       - "5436:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    env_file:
+      - .env
     networks:
       - udnnews
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: udnnews_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - udnnews
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   backend:
     build:
@@ -34,6 +50,78 @@ services:
       start_period: 40s
     depends_on:
       - db
+      - redis
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: udnnews_celery_worker
+    command: >
+      uv run celery -A config worker
+      --loglevel=info
+      --concurrency=1
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env
+    environment:
+      - SKIP_COLLECTSTATIC=true
+    networks:
+      - udnnews
+    depends_on:
+      - db
+      - redis
+
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: udnnews_celery_beat
+    command: >
+      uv run celery -A config beat
+      --loglevel=info
+      --schedule /tmp/celerybeat-schedule
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env
+    environment:
+      - SKIP_COLLECTSTATIC=true
+    networks:
+      - udnnews
+    depends_on:
+      - db
+      - redis
+
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: udnnews_flower
+    command: >
+      uv run celery -A config flower
+      --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    env_file:
+      - .env
+    environment:
+      - SKIP_COLLECTSTATIC=true
+    networks:
+      - udnnews
+    depends_on:
+      - db
+      - redis
 
   frontend:
     build:
@@ -59,4 +147,5 @@ networks:
 
 volumes:
   db_data:
+  redis_data:
   backend_static:
