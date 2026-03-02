@@ -122,7 +122,7 @@
                         <img :src="article.image_url || 'https://via.placeholder.com/600x400?text=No+Image'"
                             :alt="article.title"
                             class="w-full h-full object-cover group-hover:scale-110 group-hover:rotate-1 transition-transform duration-700 ease-out"
-                            @error="$el.src='https://via.placeholder.com/600x400?text=News'">
+                            @error="if (!$el.dataset.retried && article.image_url) { $el.dataset.retried = 'true'; $el.src = 'https://pgw.udn.com.tw/gw/photo.php?u=' + encodeURIComponent(article.image_url); } else { $el.style.display = 'none'; }">
 
                         <div
                             class="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -160,6 +160,60 @@
                     </div>
                 </article>
             </template>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="mt-12 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-2xl shadow-sm"
+            x-show="totalPages > 1" x-cloak>
+            <div class="flex flex-1 justify-between sm:hidden">
+                <button @click="goToPage(previousUrl)" :disabled="!previousUrl"
+                    class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    上一頁
+                </button>
+                <button @click="goToPage(nextUrl)" :disabled="!nextUrl"
+                    class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    下一頁
+                </button>
+            </div>
+            <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        總共 <span class="font-medium" x-text="totalCount"></span> 筆新聞，第 <span class="font-medium"
+                            x-text="currentPage"></span> / <span class="font-medium" x-text="totalPages"></span> 頁
+                    </p>
+                </div>
+                <div>
+                    <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        <!-- Previous Button -->
+                        <button @click="goToPage(previousUrl)" :disabled="!previousUrl"
+                            class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="sr-only">Previous</span>
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <!-- Page Numbers (Simplified, just showing current page for now to avoid complex sliding window logic in alpine) -->
+                        <span
+                            class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                            第 <span x-text="currentPage" class="mx-1"></span> 頁
+                        </span>
+
+                        <!-- Next Button -->
+                        <button @click="goToPage(nextUrl)" :disabled="!nextUrl"
+                            class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="sr-only">Next</span>
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </nav>
+                </div>
+            </div>
         </div>
     </main>
 

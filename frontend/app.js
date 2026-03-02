@@ -7,6 +7,13 @@ document.addEventListener('alpine:init', () => {
         error: null,
         isModalOpen: false,
 
+        // Pagination states
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        nextUrl: null,
+        previousUrl: null,
+
         // WebSocket/Toast states
         showToast: false,
         toastTitle: '新焦點新聞',
@@ -27,12 +34,12 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        async fetchArticles() {
+        async fetchArticles(url = '/api/articles/') {
             this.isLoading = true;
             this.error = null;
             try {
                 // Fetch from Django REST Framework endpoint using relative path which Nginx will proxy
-                const response = await fetch('/api/articles/');
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -41,8 +48,20 @@ document.addEventListener('alpine:init', () => {
                 // DRF typically wraps pagination in 'results'
                 if (data.results) {
                     this.articles = data.results;
+                    this.totalCount = data.count;
+                    this.totalPages = Math.ceil(data.count / 20); // DRF is configured for 20 per page
+                    this.nextUrl = data.next ? data.next.replace(/^.*\/\/[^\/]+/, '') : null; // Convert to relative URL
+                    this.previousUrl = data.previous ? data.previous.replace(/^.*\/\/[^\/]+/, '') : null;
+
+                    // Extract page number from URL if present
+                    const urlParams = new URLSearchParams(url.split('?')[1]);
+                    this.currentPage = parseInt(urlParams.get('page')) || 1;
                 } else if (Array.isArray(data)) {
                     this.articles = data;
+                    this.totalCount = data.length;
+                    this.totalPages = 1;
+                    this.nextUrl = null;
+                    this.previousUrl = null;
                 } else {
                     console.warn('Unexpected data format', data);
                     this.articles = [];
@@ -53,6 +72,13 @@ document.addEventListener('alpine:init', () => {
                 this.error = '無法自動載入新聞列表，請確保後端伺服器正常運作並已爬取資料。';
             } finally {
                 this.isLoading = false;
+            }
+        },
+
+        async goToPage(url) {
+            if (url) {
+                await this.fetchArticles(url);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         },
 
@@ -155,7 +181,7 @@ document.addEventListener('alpine:init', () => {
                         const data = JSON.parse(event.data);
                         // Show notification if it's a new article event
                         if (data.type === 'new_article' || data.message) {
-                            this.showNotification('焦點新聞更新', data.title || data.message || '剛剛抓取到一篇最新新聞');
+                            this.showNotification('焦點新聞更新', data.message || '剛剛抓取到一篇最新新聞');
                         }
                     } catch (e) {
                         console.warn("WS parsing error", e);
@@ -164,6 +190,10 @@ document.addEventListener('alpine:init', () => {
 
                 this.wsSocket.onerror = () => {
                     console.log('WebSocket connection not ready or configured differently in compose.');
+                };
+
+                this.wsSocket.onclose = () => {
+                    setTimeout(() => this.setupWebSocket(), 3000);
                 };
             } catch (e) {
                 console.log('WebSocket init error', e);
@@ -179,6 +209,7 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => {
                 this.showToast = false;
             }, 5000);
+            console.log('Toast shown:', title, message);
         }
     }));
 });
