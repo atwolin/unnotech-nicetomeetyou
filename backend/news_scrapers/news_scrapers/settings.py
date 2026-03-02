@@ -16,6 +16,12 @@ sys.path.append(
 )
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
+# Install asyncio reactor BEFORE django.setup() to avoid conflict with Django Channels
+# (channels initializes asyncio during app loading; Twisted must use asyncio reactor too)
+from twisted.internet import asyncioreactor  # noqa: E402
+
+asyncioreactor.install()
+
 import django  # noqa: E402
 
 django.setup()
@@ -100,3 +106,6 @@ ITEM_PIPELINES = {
 FEED_EXPORT_ENCODING = "utf-8"
 
 LOG_LEVEL = "INFO"
+
+# Use asyncio reactor to avoid conflict between Twisted (Scrapy) and asyncio (Django Channels)
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"

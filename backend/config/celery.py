@@ -12,6 +12,7 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     "scrape-udn-news-every-hour": {
         "task": "news_scrapers.scrape_udn_news",
-        "schedule": crontab(minute=0, hour="*/2"),  # every 2 hours
+        "schedule": crontab(minute=0, hour="*/6"),  # every 6 hours
+        # "schedule": crontab(hour="*", minute="0"),  # every hour
     },
 }

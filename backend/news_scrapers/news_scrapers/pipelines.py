@@ -1,4 +1,7 @@
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db import DatabaseError
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from news.models import Article, Category
@@ -45,7 +48,7 @@ class NewsScrapersPipeline:
                     defaults={"name": item.get("category_name", "")},
                 )
 
-            Article.objects.update_or_create(
+            article, created = Article.objects.update_or_create(
                 story_id=item["story_id"],
                 defaults={
                     "url": item.get("url", ""),
@@ -61,6 +64,17 @@ class NewsScrapersPipeline:
                     "body": item.get("body", []),
                 },
             )
+
+            if created:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    "news_updates",
+                    {
+                        "type": "new_article",
+                        "message": f"New article {article.title} have been added.",
+                        "datetime": timezone.now().isoformat(),
+                    },
+                )
         except DatabaseError as exc:
             raise DropItem(f"DB error saving story_id={item.get('story_id')}: {exc}")
 
