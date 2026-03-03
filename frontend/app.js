@@ -7,6 +7,10 @@ document.addEventListener('alpine:init', () => {
         error: null,
         isModalOpen: false,
 
+        // Search state
+        searchQuery: '',
+        searchTimeout: null,
+
         // Pagination states
         currentPage: 1,
         totalPages: 1,
@@ -24,7 +28,6 @@ document.addEventListener('alpine:init', () => {
             this.fetchArticles();
             this.setupWebSocket();
 
-            // Handle escape key and body scroll lock for modal
             this.$watch('isModalOpen', (value) => {
                 if (value) {
                     document.body.style.overflow = 'hidden';
@@ -34,12 +37,29 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        async fetchArticles(url = '/api/articles/') {
+        onSearchInput() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                this.currentPage = 1;
+                this.fetchArticles('/api/articles/', this.searchQuery);
+            }, 400);
+        },
+
+        clearSearch() {
+            this.searchQuery = '';
+            this.fetchArticles();
+        },
+
+        async fetchArticles(url = '/api/articles/', query = '') {
             this.isLoading = true;
             this.error = null;
             try {
-                // Fetch from Django REST Framework endpoint using relative path which Nginx will proxy
-                const response = await fetch(url);
+                let fetchUrl = url;
+                if (query && !url.includes('search=')) {
+                    const sep = url.includes('?') ? '&' : '?';
+                    fetchUrl = `${url}${sep}search=${encodeURIComponent(query)}`;
+                }
+                const response = await fetch(fetchUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -150,8 +170,35 @@ document.addEventListener('alpine:init', () => {
                             return `<p><a href="${block.url}" target="_blank" class="text-udn-blue hover:underline">🐦 查看原始推文</a></p>`;
                         case 'video':
                             return `<div class="my-6 aspect-video"><iframe src="${block.url}" class="w-full h-full rounded-xl" allowfullscreen></iframe></div>`;
-                        case 'livescore':
-                            return `<div class="my-4 p-4 bg-gray-100 rounded-xl text-sm text-gray-700">📊 比賽數據：${JSON.stringify(block.data)}</div>`;
+                        case 'livescore': {
+                            const d = block.data || {};
+                            const away = d.away_team || '客隊';
+                            const home = d.home_team || '主隊';
+                            const awayScore = d.away_score ?? '-';
+                            const homeScore = d.home_score ?? '-';
+                            const status = d.statusWord || d.status || '';
+                            const date = d.date ? `<span class="text-gray-400 text-xs ml-2">${d.date}</span>` : '';
+                            const winner = (d.away_score > d.home_score) ? 'away' : (d.home_score > d.away_score) ? 'home' : 'tie';
+                            return `<div class="my-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex-1 text-center">
+                                        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">客隊</div>
+                                        <div class="text-2xl font-black ${winner === 'away' ? 'text-udn-blue' : 'text-gray-700'}">${away}</div>
+                                        <div class="text-4xl font-black ${winner === 'away' ? 'text-udn-blue' : 'text-gray-400'} mt-1">${awayScore}</div>
+                                    </div>
+                                    <div class="text-center px-2">
+                                        <div class="text-xs font-semibold text-gray-400 uppercase">${status}</div>
+                                        <div class="text-lg text-gray-300 font-light my-1">:</div>
+                                        ${date}
+                                    </div>
+                                    <div class="flex-1 text-center">
+                                        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">主隊</div>
+                                        <div class="text-2xl font-black ${winner === 'home' ? 'text-udn-blue' : 'text-gray-700'}">${home}</div>
+                                        <div class="text-4xl font-black ${winner === 'home' ? 'text-udn-blue' : 'text-gray-400'} mt-1">${homeScore}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }
                         default:
                             return '';
                     }
