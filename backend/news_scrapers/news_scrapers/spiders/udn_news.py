@@ -1,3 +1,4 @@
+import difflib
 import json
 import re
 from urllib.parse import urlparse
@@ -25,14 +26,41 @@ class UdnNewsSpider(scrapy.Spider):
         story_id is embedded in every article URL path
         (/nba/story/{category_id}/{story_id}), so we can skip already-scraped
         articles here — before making any detail-page HTTP requests.
+
+        Some focus_body links have broken href values (e.g. '_blank', 'N', '?')
+        due to a CMS bug on the UDN side.  When a link is invalid we fall back to
+        fuzzy-matching the focus title against the title→URL map built from all
+        other valid story links on the same page.
         """
         seen_urls: set[str] = set()
         skipped = 0
 
+        # Build a page-wide title → URL map from every valid story link.
+        title_url_map = self._build_title_url_map(response)
+
         for a in response.css(".focus_body a"):
             link = a.attrib.get("href", "")
+
+            # Prefer the anchor's title attribute; fall back to inner text.
+            raw_title = (a.attrib.get("title") or "").strip()
+            if not raw_title:
+                raw_title = " ".join(
+                    t.strip() for t in a.css("::text").getall() if t.strip()
+                )
+
+            # Try to use the href directly if it already points to a story page.
             clean_url = self._clean_url(link)
-            if not clean_url or clean_url in seen_urls:
+            path = urlparse(clean_url).path if clean_url else ""
+            if not re.search(r"/nba/story/\d+/\d+", path):
+                # href is broken → look up the correct URL by fuzzy title match.
+                clean_url = self._fuzzy_find_url(raw_title, title_url_map)
+                if not clean_url:
+                    self.logger.warning(
+                        f"No story URL found for focus item: {raw_title!r}"
+                    )
+                    continue
+
+            if clean_url in seen_urls:
                 continue
             seen_urls.add(clean_url)
 
@@ -45,14 +73,11 @@ class UdnNewsSpider(scrapy.Spider):
                 skipped += 1
                 continue
 
-            focus_title = " ".join(
-                t.strip() for t in a.css("::text").getall() if t.strip()
-            )
             yield scrapy.Request(
                 url=clean_url,
                 callback=self.parse_article,
                 errback=self.handle_http_error,
-                meta={"focus_title": focus_title},
+                meta={"focus_title": raw_title},
             )
 
         if not seen_urls:
@@ -285,3 +310,58 @@ class UdnNewsSpider(scrapy.Spider):
             url = f"https://tw-nba.udn.com{url}"
         parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+
+    # ------------------------------------------------------------------
+    # Focus-news URL recovery helpers
+    # ------------------------------------------------------------------
+
+    def _build_title_url_map(self, response) -> dict[str, str]:
+        """Scan every valid story link on the page and return a
+        normalised-title → clean_url mapping.
+
+        Used as a fallback when a focus_body link has a broken href.
+        """
+        title_map: dict[str, str] = {}
+        for a in response.css('a[href*="/nba/story/"]'):
+            href = a.attrib.get("href", "")
+            url = self._clean_url(href)
+            if not url:
+                continue
+            title = (a.attrib.get("title") or "").strip()
+            if not title:
+                title = " ".join(
+                    t.strip() for t in a.css("::text").getall() if t.strip()
+                )
+            if title:
+                title_map[self._normalize_title(title)] = url
+        return title_map
+
+    def _normalize_title(self, title: str) -> str:
+        """Strip category prefixes like 'NBA／' or '世界盃男籃／' and whitespace."""
+        return re.sub(r"^[^／]+／", "", title).strip()
+
+    def _fuzzy_find_url(
+        self,
+        focus_title: str,
+        title_url_map: dict[str, str],
+        threshold: float = 0.7,
+    ) -> str | None:
+        """Return the story URL whose normalised title best matches `focus_title`.
+
+        Focus titles are often edited / shortened versions of the full NBA-news
+        titles, so we use difflib.SequenceMatcher for similarity scoring rather
+        than an exact-match lookup.  Only returns a URL when the best ratio is
+        at least `threshold`.
+        """
+        normalized_focus = self._normalize_title(focus_title)
+        best_ratio = 0.0
+        best_url: str | None = None
+        for title, url in title_url_map.items():
+            ratio = difflib.SequenceMatcher(None, normalized_focus, title).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_url = url
+        if best_ratio >= threshold:
+            self.logger.debug(f"Fuzzy match ({best_ratio:.2f}) for {focus_title!r}")
+            return best_url
+        return None

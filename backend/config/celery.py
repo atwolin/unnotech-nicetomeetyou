@@ -10,9 +10,8 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    "scrape-udn-news-every-hour": {
+    "scrape-udn-news-every-2-hours": {
         "task": "news_scrapers.scrape_udn_news",
-        "schedule": crontab(minute=0, hour="*/6"),  # every 6 hours
-        # "schedule": crontab(hour="*", minute="0"),  # every hour
+        "schedule": crontab(minute=0, hour="*/2"),  # every 2 hours
     },
 }
