@@ -168,6 +168,11 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(
 SECURE_HSTS_PRELOAD = env.bool("DJANGO_SECURE_HSTS_PRELOAD", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Django is deployed behind a reverse-proxy (Nginx) that handles SSL termination
+# and HTTP→HTTPS redirects. SECURE_SSL_REDIRECT must stay False to avoid redirect
+# loops; silence the resulting false-positive deploy check warning.
+SILENCED_SYSTEM_CHECKS = ["security.W008"]
+
 # ============================================================
 # Celery configuration
 # ============================================================
@@ -191,6 +196,7 @@ CELERY_ENABLE_UTC = True
 # Django REST Framework
 # ============================================================
 REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
